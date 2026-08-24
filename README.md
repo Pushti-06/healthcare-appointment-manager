@@ -9,9 +9,7 @@ templates (no build step needed), and a pluggable LLM/email/calendar layer that
 degrades gracefully when those services aren't configured — the app is fully
 runnable and demoable with zero external API keys.
 
-**Live demo:** [your-app.onrender.com](#) &nbsp;·&nbsp; **Design write-up:** [DESIGN.md](./DESIGN.md)
-
-<!-- Once deployed, replace the # above with your actual Render/Railway URL. -->
+**Live demo:** [healthcare-appointment-manager-7u3c.onrender.com](https://healthcare-appointment-manager-7u3c.onrender.com) &nbsp;·&nbsp; **Design write-up:** [DESIGN.md](./DESIGN.md)
 
 ### What's implemented
 
