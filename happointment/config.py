@@ -21,7 +21,7 @@ class Config:
     # Any OpenAI-compatible endpoint works: OpenAI, Groq (free tier), Together, etc.
     LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
     LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "https://api.groq.com/openai/v1")
-    LLM_MODEL = os.environ.get("LLM_MODEL", "llama-3.1-8b-instant")
+    LLM_MODEL = os.environ.get("LLM_MODEL", "openai/gpt-oss-20b")
     LLM_TIMEOUT_SECONDS = float(os.environ.get("LLM_TIMEOUT_SECONDS", "8"))
 
     # --- Email ---
@@ -33,6 +33,11 @@ class Config:
     EMAIL_MAX_RETRIES = int(os.environ.get("EMAIL_MAX_RETRIES", "3"))
 
     # --- Google Calendar ---
+    # Preferred on hosts with no reliable secret-file placement (e.g. Render
+    # with a custom root directory): paste the whole client_secret.json
+    # content directly into this env var. Takes priority over the file path
+    # below when set.
+    GOOGLE_CLIENT_SECRETS_JSON = os.environ.get("GOOGLE_CLIENT_SECRETS_JSON", "")
     GOOGLE_CLIENT_SECRETS_FILE = os.environ.get(
         "GOOGLE_CLIENT_SECRETS_FILE", os.path.join(basedir, "client_secret.json")
     )

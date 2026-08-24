@@ -26,12 +26,32 @@ SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
 
 
 def get_flow(state=None):
-    return Flow.from_client_secrets_file(
-        current_app.config["GOOGLE_CLIENT_SECRETS_FILE"],
+    client_config = _load_client_config()
+    return Flow.from_client_config(
+        client_config,
         scopes=SCOPES,
         redirect_uri=current_app.config["GOOGLE_REDIRECT_URI"],
         state=state,
     )
+
+
+def _load_client_config() -> dict:
+    """Loads the OAuth client config from either GOOGLE_CLIENT_SECRETS_JSON
+    (the raw JSON content, pasted directly into an env var — simplest for
+    hosts like Render where "secret files" have path ambiguity once a
+    custom root directory is set) or, if that's not set, from the JSON
+    file at GOOGLE_CLIENT_SECRETS_FILE (the normal local-dev path)."""
+    raw_json = current_app.config.get("GOOGLE_CLIENT_SECRETS_JSON")
+    if raw_json:
+        return json.loads(raw_json)
+    with open(current_app.config["GOOGLE_CLIENT_SECRETS_FILE"]) as f:
+        return json.load(f)
+
+
+def has_client_config() -> bool:
+    if current_app.config.get("GOOGLE_CLIENT_SECRETS_JSON"):
+        return True
+    return os.path.exists(current_app.config["GOOGLE_CLIENT_SECRETS_FILE"])
 
 
 def _load_credentials():

@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta
 from collections import Counter
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
@@ -109,12 +110,12 @@ def manage_leave(doctor_id):
 @role_required("admin")
 def google_connect():
     """Kicks off the Google Calendar OAuth flow. Only does something once
-    client_secret.json is in place — see README "Google Calendar setup"."""
-    import os
-    if not os.path.exists(current_app.config["GOOGLE_CLIENT_SECRETS_FILE"]):
+    credentials are configured — see README "Google Calendar setup"."""
+    if not calendar_service.has_client_config():
         flash(
-            "Google Calendar isn't set up yet — add client_secret.json first "
-            "(see README, 'Google Calendar setup').", "error"
+            "Google Calendar isn't set up yet — add GOOGLE_CLIENT_SECRETS_JSON "
+            "or client_secret.json first (see README, 'Google Calendar setup').",
+            "error"
         )
         return redirect(url_for("admin.dashboard"))
 
