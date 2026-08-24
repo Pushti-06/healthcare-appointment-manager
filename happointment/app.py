@@ -52,6 +52,7 @@ def create_app(config_class=Config):
     with app.app_context():
         db.create_all()
         _seed_admin(app)
+        _maybe_auto_seed(app)
 
     if os.environ.get("ENABLE_SCHEDULER", "1") == "1":
         from services.scheduler import init_scheduler
@@ -74,6 +75,33 @@ def _seed_admin(app):
     db.session.add(admin)
     db.session.commit()
     app.logger.info(f"Seeded default admin: {email} / (see ADMIN_PASSWORD in .env)")
+
+
+def _maybe_auto_seed(app):
+    """Auto-populates hospital-scale demo data on startup when AUTO_SEED=1
+    and the database is currently empty of doctors.
+
+    This exists for hosts like Render's free tier that have no persistent
+    disk and no shell access: the SQLite file resets to empty on every
+    cold start after the service spins down from inactivity. Rather than
+    requiring manual `python seed_data.py` access that free tiers don't
+    allow, this reseeds automatically and idempotently every time the app
+    boots into an empty database — so a demo/hosted URL never shows up
+    blank. Safe to leave off (default) for a normal deployment with a
+    real persistent database, where you'd seed once yourself and don't
+    want it silently re-running on every restart.
+    """
+    if os.environ.get("AUTO_SEED", "0") != "1":
+        return
+    from models import DoctorProfile
+    if DoctorProfile.query.count() > 0:
+        return
+    try:
+        from seed_data import run_seed
+        run_seed()
+        app.logger.info("AUTO_SEED=1: database was empty, seeded demo data.")
+    except Exception as exc:
+        app.logger.warning(f"Auto-seed failed (app still starts fine): {exc}")
 
 
 app = create_app()

@@ -17,7 +17,6 @@ import json
 import random
 from datetime import datetime, timedelta
 
-from app import create_app
 from extensions import db
 from models import User, DoctorProfile, Appointment, Leave, MedicationReminder
 from services import llm_service
@@ -119,188 +118,202 @@ def unique_names(first_pool, last_pool, count):
     return names
 
 
-def seed():
-    app = create_app()
-    with app.app_context():
-        doctor_names = unique_names(DOCTOR_FIRST, DOCTOR_LAST, 35)
-        patient_names = unique_names(PATIENT_FIRST, PATIENT_LAST, 70)
+def run_seed():
+    """Runs the actual seeding logic. Must be called from within an
+    active Flask app context (e.g. inside app.app_context()) — this is
+    what lets app.py call it directly on startup for auto-seeding on
+    hosts with no persistent disk / no shell access, without creating a
+    second app instance."""
+    doctor_names = unique_names(DOCTOR_FIRST, DOCTOR_LAST, 35)
+    patient_names = unique_names(PATIENT_FIRST, PATIENT_LAST, 70)
 
-        # --- Doctors, ~2-3 per department ---
-        created_doctors = 0
-        doctor_profiles = []
-        for i, name in enumerate(doctor_names):
-            dept = DEPARTMENTS[i % len(DEPARTMENTS)]
-            email = f"{name.lower().replace(' ', '.')}@clinic.local"
-            user = User.query.filter_by(email=email).first()
-            if not user:
-                user = User(role="doctor", name=name, email=email)
-                user.set_password("doctor123")
-                db.session.add(user)
-                db.session.flush()
-                start_hour = random.choice([8, 9, 10])
-                end_hour = start_hour + random.choice([6, 7, 8])
-                profile = DoctorProfile(
-                    user_id=user.id, specialization=dept,
-                    working_hours_start=f"{start_hour:02d}:00",
-                    working_hours_end=f"{min(end_hour, 20):02d}:00",
-                    slot_duration_minutes=random.choice([15, 20, 30]),
-                )
-                db.session.add(profile)
-                db.session.flush()
-                created_doctors += 1
-            else:
-                profile = user.doctor_profile
-            doctor_profiles.append(profile)
-        db.session.commit()
+    # --- Doctors, ~2-3 per department ---
+    created_doctors = 0
+    doctor_profiles = []
+    for i, name in enumerate(doctor_names):
+        dept = DEPARTMENTS[i % len(DEPARTMENTS)]
+        email = f"{name.lower().replace(' ', '.')}@clinic.local"
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            user = User(role="doctor", name=name, email=email)
+            user.set_password("doctor123")
+            db.session.add(user)
+            db.session.flush()
+            start_hour = random.choice([8, 9, 10])
+            end_hour = start_hour + random.choice([6, 7, 8])
+            profile = DoctorProfile(
+                user_id=user.id, specialization=dept,
+                working_hours_start=f"{start_hour:02d}:00",
+                working_hours_end=f"{min(end_hour, 20):02d}:00",
+                slot_duration_minutes=random.choice([15, 20, 30]),
+            )
+            db.session.add(profile)
+            db.session.flush()
+            created_doctors += 1
+        else:
+            profile = user.doctor_profile
+        doctor_profiles.append(profile)
+    db.session.commit()
 
-        # --- Patients ---
-        created_patients = 0
-        patient_users = []
-        for name in patient_names:
-            email = f"{name.lower().replace(' ', '.')}@example.com"
-            user = User.query.filter_by(email=email).first()
-            if not user:
-                user = User(role="patient", name=name, email=email)
-                user.set_password("patient123")
-                db.session.add(user)
-                db.session.flush()
-                created_patients += 1
-            patient_users.append(user)
-        db.session.commit()
+    # --- Patients ---
+    created_patients = 0
+    patient_users = []
+    for name in patient_names:
+        email = f"{name.lower().replace(' ', '.')}@example.com"
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            user = User(role="patient", name=name, email=email)
+            user.set_password("patient123")
+            db.session.add(user)
+            db.session.flush()
+            created_patients += 1
+        patient_users.append(user)
+    db.session.commit()
 
-        # --- A few doctors have an upcoming leave day, with bookings left on
-        # it on purpose so the leave-conflict flow is demoable live. We
-        # deliberately DON'T create the Leave row yet — bookings need the
-        # day to look free first; the leave itself is applied after.
-        leave_doctors = random.sample(doctor_profiles, 3)
-        leave_plan = {}
-        for ld in leave_doctors:
-            leave_date = (datetime.utcnow() + timedelta(days=random.randint(4, 9))).date()
-            leave_plan[ld.id] = leave_date
+    # --- A few doctors have an upcoming leave day, with bookings left on
+    # it on purpose so the leave-conflict flow is demoable live. We
+    # deliberately DON'T create the Leave row yet — bookings need the
+    # day to look free first; the leave itself is applied after.
+    leave_doctors = random.sample(doctor_profiles, 3)
+    leave_plan = {}
+    for ld in leave_doctors:
+        leave_date = (datetime.utcnow() + timedelta(days=random.randint(4, 9))).date()
+        leave_plan[ld.id] = leave_date
 
-        # --- Appointments: past two months + next two weeks ---
-        now = datetime.utcnow()
-        created_appts = 0
-        used_slots = set()
+    # --- Appointments: past two months + next two weeks ---
+    now = datetime.utcnow()
+    created_appts = 0
+    used_slots = set()
 
-        def make_appointment(patient, doctor, day_offset, status_pool):
-            slot_day = (now + timedelta(days=day_offset)).date()
-            hour = random.randint(9, 17)
-            slot_start = datetime.combine(slot_day, datetime.min.time()).replace(hour=hour)
-            key = (doctor.id, slot_start)
-            if key in used_slots:
-                return None
-            used_slots.add(key)
+    def make_appointment(patient, doctor, day_offset, status_pool):
+        slot_day = (now + timedelta(days=day_offset)).date()
+        hour = random.randint(9, 17)
+        slot_start = datetime.combine(slot_day, datetime.min.time()).replace(hour=hour)
+        key = (doctor.id, slot_start)
+        if key in used_slots:
+            return None
+        used_slots.add(key)
 
+        symptoms = random.choice(SYMPTOM_SAMPLES)
+        status = weighted_status(status_pool)
+        appt = Appointment(
+            patient_id=patient.id, doctor_id=doctor.id,
+            slot_start=slot_start,
+            slot_end=slot_start + timedelta(minutes=doctor.slot_duration_minutes),
+            symptoms_text=symptoms,
+            status="cancelled" if status == "cancelled" else (
+                "completed" if day_offset < 0 else "booked"
+            ),
+        )
+        if status == "cancelled":
+            appt.cancel_reason = random.choice(
+                ["Cancelled by patient", "Rescheduled", "Doctor on leave"]
+            )
+            db.session.add(appt)
+            return appt
+
+        pre_summary, pre_failed = llm_service.generate_pre_visit_summary(symptoms)
+        appt.pre_visit_urgency = pre_summary.get("urgency", "Low")
+        appt.pre_visit_summary_json = json.dumps(pre_summary)
+        appt.llm_pre_visit_failed = pre_failed
+
+        if day_offset < 0:  # past -> completed, has post-visit summary too
+            notes = random.choice(CLINICAL_NOTES_SAMPLES)
+            post_summary, post_failed = llm_service.generate_post_visit_summary(notes)
+            appt.post_visit_notes = notes
+            appt.post_visit_summary_json = json.dumps(post_summary)
+            appt.llm_post_visit_failed = post_failed
+
+        db.session.add(appt)
+        db.session.flush()
+
+        if day_offset < 0 and random.random() < 0.4:
+            db.session.add(MedicationReminder(
+                appointment_id=appt.id,
+                medication_name=random.choice(["Paracetamol 500mg", "Cetirizine 10mg", "Ibuprofen 400mg"]),
+                frequency_hours=random.choice([8, 12, 24]),
+                next_due_at=now + timedelta(hours=8),
+                active=False, times_sent=random.randint(1, 4),
+            ))
+        return appt
+
+    # Past appointments: spread over the last 60 days
+    for _ in range(220):
+        patient = random.choice(patient_users)
+        doctor = random.choice(doctor_profiles)
+        day_offset = -random.randint(1, 60)
+        if make_appointment(patient, doctor, day_offset, STATUS_WEIGHTS_PAST):
+            created_appts += 1
+
+    # Upcoming appointments: next 14 days
+    for _ in range(60):
+        patient = random.choice(patient_users)
+        doctor = random.choice(doctor_profiles)
+        day_offset = random.randint(1, 14)
+        if make_appointment(patient, doctor, day_offset, STATUS_WEIGHTS_FUTURE):
+            created_appts += 1
+
+    # Guarantee 2 real bookings land on each planned leave day, so the
+    # leave-conflict-cancellation flow has something to demonstrate.
+    for doctor_id, leave_date in leave_plan.items():
+        doctor = next(d for d in doctor_profiles if d.id == doctor_id)
+        day_offset = (leave_date - now.date()).days
+        for hour in (10, 14):
+            slot_start = datetime.combine(leave_date, datetime.min.time()).replace(hour=hour)
+            if (doctor.id, slot_start) in used_slots:
+                continue
+            used_slots.add((doctor.id, slot_start))
+            patient = random.choice(patient_users)
             symptoms = random.choice(SYMPTOM_SAMPLES)
-            status = weighted_status(status_pool)
+            pre_summary, pre_failed = llm_service.generate_pre_visit_summary(symptoms)
             appt = Appointment(
                 patient_id=patient.id, doctor_id=doctor.id,
                 slot_start=slot_start,
                 slot_end=slot_start + timedelta(minutes=doctor.slot_duration_minutes),
                 symptoms_text=symptoms,
-                status="cancelled" if status == "cancelled" else (
-                    "completed" if day_offset < 0 else "booked"
-                ),
+                pre_visit_urgency=pre_summary.get("urgency", "Low"),
+                pre_visit_summary_json=json.dumps(pre_summary),
+                llm_pre_visit_failed=pre_failed,
+                status="booked",
             )
-            if status == "cancelled":
-                appt.cancel_reason = random.choice(
-                    ["Cancelled by patient", "Rescheduled", "Doctor on leave"]
-                )
-                db.session.add(appt)
-                return appt
-
-            pre_summary, pre_failed = llm_service.generate_pre_visit_summary(symptoms)
-            appt.pre_visit_urgency = pre_summary.get("urgency", "Low")
-            appt.pre_visit_summary_json = json.dumps(pre_summary)
-            appt.llm_pre_visit_failed = pre_failed
-
-            if day_offset < 0:  # past -> completed, has post-visit summary too
-                notes = random.choice(CLINICAL_NOTES_SAMPLES)
-                post_summary, post_failed = llm_service.generate_post_visit_summary(notes)
-                appt.post_visit_notes = notes
-                appt.post_visit_summary_json = json.dumps(post_summary)
-                appt.llm_post_visit_failed = post_failed
-
             db.session.add(appt)
-            db.session.flush()
+            created_appts += 1
+    db.session.commit()
 
-            if day_offset < 0 and random.random() < 0.4:
-                db.session.add(MedicationReminder(
-                    appointment_id=appt.id,
-                    medication_name=random.choice(["Paracetamol 500mg", "Cetirizine 10mg", "Ibuprofen 400mg"]),
-                    frequency_hours=random.choice([8, 12, 24]),
-                    next_due_at=now + timedelta(hours=8),
-                    active=False, times_sent=random.randint(1, 4),
-                ))
-            return appt
+    # Now apply the leave rows themselves (bookings above are already
+    # in place, exactly the "existing bookings when leave is marked"
+    # scenario the admin can walk through).
+    for doctor_id, leave_date in leave_plan.items():
+        if not Leave.query.filter_by(doctor_id=doctor_id, date=leave_date).first():
+            db.session.add(Leave(doctor_id=doctor_id, date=leave_date, reason=random.choice(
+                ["Conference", "Personal leave", "Training workshop"]
+            )))
+    db.session.commit()
 
-        # Past appointments: spread over the last 60 days
-        for _ in range(220):
-            patient = random.choice(patient_users)
-            doctor = random.choice(doctor_profiles)
-            day_offset = -random.randint(1, 60)
-            if make_appointment(patient, doctor, day_offset, STATUS_WEIGHTS_PAST):
-                created_appts += 1
+    leave_summary = [
+        (next(d for d in doctor_profiles if d.id == did).user.name, ld)
+        for did, ld in leave_plan.items()
+    ]
+    print(f"Departments: {len(DEPARTMENTS)}")
+    print(f"Doctors created: {created_doctors} (total {len(doctor_profiles)})")
+    print(f"Patients created: {created_patients} (total {len(patient_users)})")
+    print(f"Appointments created: {created_appts}")
+    print("Doctors with an upcoming leave day (2 bookings on it, ready to demo the cancel flow):")
+    for name, ld in leave_summary:
+        print(f"  - Dr. {name} on {ld}")
+    print("\nAll seeded accounts use password: doctor123 (doctors) / patient123 (patients)")
+    print("Admin login is whatever you set as ADMIN_EMAIL/ADMIN_PASSWORD in .env.")
 
-        # Upcoming appointments: next 14 days
-        for _ in range(60):
-            patient = random.choice(patient_users)
-            doctor = random.choice(doctor_profiles)
-            day_offset = random.randint(1, 14)
-            if make_appointment(patient, doctor, day_offset, STATUS_WEIGHTS_FUTURE):
-                created_appts += 1
 
-        # Guarantee 2 real bookings land on each planned leave day, so the
-        # leave-conflict-cancellation flow has something to demonstrate.
-        for doctor_id, leave_date in leave_plan.items():
-            doctor = next(d for d in doctor_profiles if d.id == doctor_id)
-            day_offset = (leave_date - now.date()).days
-            for hour in (10, 14):
-                slot_start = datetime.combine(leave_date, datetime.min.time()).replace(hour=hour)
-                if (doctor.id, slot_start) in used_slots:
-                    continue
-                used_slots.add((doctor.id, slot_start))
-                patient = random.choice(patient_users)
-                symptoms = random.choice(SYMPTOM_SAMPLES)
-                pre_summary, pre_failed = llm_service.generate_pre_visit_summary(symptoms)
-                appt = Appointment(
-                    patient_id=patient.id, doctor_id=doctor.id,
-                    slot_start=slot_start,
-                    slot_end=slot_start + timedelta(minutes=doctor.slot_duration_minutes),
-                    symptoms_text=symptoms,
-                    pre_visit_urgency=pre_summary.get("urgency", "Low"),
-                    pre_visit_summary_json=json.dumps(pre_summary),
-                    llm_pre_visit_failed=pre_failed,
-                    status="booked",
-                )
-                db.session.add(appt)
-                created_appts += 1
-        db.session.commit()
 
-        # Now apply the leave rows themselves (bookings above are already
-        # in place, exactly the "existing bookings when leave is marked"
-        # scenario the admin can walk through).
-        for doctor_id, leave_date in leave_plan.items():
-            if not Leave.query.filter_by(doctor_id=doctor_id, date=leave_date).first():
-                db.session.add(Leave(doctor_id=doctor_id, date=leave_date, reason=random.choice(
-                    ["Conference", "Personal leave", "Training workshop"]
-                )))
-        db.session.commit()
 
-        leave_summary = [
-            (next(d for d in doctor_profiles if d.id == did).user.name, ld)
-            for did, ld in leave_plan.items()
-        ]
-        print(f"Departments: {len(DEPARTMENTS)}")
-        print(f"Doctors created: {created_doctors} (total {len(doctor_profiles)})")
-        print(f"Patients created: {created_patients} (total {len(patient_users)})")
-        print(f"Appointments created: {created_appts}")
-        print("Doctors with an upcoming leave day (2 bookings on it, ready to demo the cancel flow):")
-        for name, ld in leave_summary:
-            print(f"  - Dr. {name} on {ld}")
-        print("\nAll seeded accounts use password: doctor123 (doctors) / patient123 (patients)")
-        print("Admin login is whatever you set as ADMIN_EMAIL/ADMIN_PASSWORD in .env.")
+def seed():
+    """CLI entry point — creates its own app + context. Use this when
+    running `python seed_data.py` directly."""
+    from app import create_app
+    app = create_app()
+    with app.app_context():
+        run_seed()
 
 
 if __name__ == "__main__":
