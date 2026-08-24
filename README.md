@@ -11,11 +11,6 @@ runnable and demoable with zero external API keys.
 
 **Live demo:** [healthcare-appointment-manager-7u3c.onrender.com](https://healthcare-appointment-manager-7u3c.onrender.com) &nbsp;·&nbsp; **Design write-up:** [DESIGN.md](./DESIGN.md)
 
-> **Note:** the live demo is on Render's free tier, so the first request after a
-> period of inactivity can take up to ~50 seconds while it spins back up —
-> that's expected, not a bug. To try it, register a new patient or doctor
-> account from the login page; admin credentials aren't published here for
-> obvious reasons.
 ### What's implemented
 
 | | |
