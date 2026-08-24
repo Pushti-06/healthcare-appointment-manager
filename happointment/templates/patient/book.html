@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Book with Dr. {{ doctor.user.name }}{% endblock %}
+{% block content %}
+<h1>Book with Dr. {{ doctor.user.name }}</h1>
+<p class="subtitle">{{ doctor.specialization }} · {{ doctor.slot_duration_minutes }} min slots</p>
+
+<form method="GET" style="flex-direction: row; align-items: flex-end; max-width: none;">
+  <div>
+    <label>Date</label>
+    <input type="date" name="date" value="{{ day }}" onchange="this.form.submit()">
+  </div>
+</form>
+
+{% if not slots %}
+  <p class="muted">No slots available this day (doctor may be on leave or fully booked). Try another date.</p>
+{% else %}
+<form method="POST" id="book-form">
+  <label>Choose a time</label>
+  <div class="slot-grid">
+    {% for s in slots %}
+      <button type="button" class="slot-btn" data-slot="{{ s.isoformat() }}" onclick="selectSlot(this)">{{ s.strftime('%H:%M') }}</button>
+    {% endfor %}
+  </div>
+  <input type="hidden" name="slot_start" id="slot_start" required>
+
+  <label>Describe your symptoms</label>
+  <textarea name="symptoms" placeholder="e.g. Fever for 2 days, mild headache, no other symptoms" required></textarea>
+  <p class="muted">This gets summarized for your doctor before the visit (urgency level + suggested questions).</p>
+
+  <button type="submit">Confirm booking</button>
+</form>
+<script>
+function selectSlot(btn) {
+  document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('slot_start').value = btn.dataset.slot;
+}
+</script>
+{% endif %}
+{% endblock %}

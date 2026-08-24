@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Add doctor{% endblock %}
+{% block content %}
+<h1>Add a doctor</h1>
+<form method="POST">
+  <label>Full name</label>
+  <input type="text" name="name" required>
+  <label>Email</label>
+  <input type="email" name="email" required>
+  <label>Temporary password</label>
+  <input type="password" name="password" required minlength="6">
+  <label>Specialization</label>
+  <input type="text" name="specialization" required>
+  <label>Working hours start</label>
+  <input type="time" name="working_hours_start" value="09:00" required>
+  <label>Working hours end</label>
+  <input type="time" name="working_hours_end" value="17:00" required>
+  <label>Slot duration (minutes)</label>
+  <input type="number" name="slot_duration_minutes" value="30" required>
+  <button type="submit">Create doctor</button>
+</form>
+{% endblock %}

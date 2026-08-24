@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Clinic{% endblock %} — Attend</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+{% macro flashes() %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+{% endmacro %}
+
+{% if current_user.is_authenticated %}
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 120 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M2 14H26L32 4L42 24L50 10L56 18L64 14H118" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="brand-word">Attend</span>
+      </div>
+
+      <nav class="side-nav">
+        {% if current_user.role == 'patient' %}
+          <a href="{{ url_for('patient.dashboard') }}" class="{{ 'active' if request.endpoint == 'patient.dashboard' }}">Your appointments</a>
+          <a href="{{ url_for('patient.search_doctors') }}" class="{{ 'active' if request.endpoint and (request.endpoint.startswith('patient.search') or request.endpoint == 'patient.book') }}">Find a doctor</a>
+        {% elif current_user.role == 'doctor' %}
+          <a href="{{ url_for('doctor.dashboard') }}" class="{{ 'active' if request.endpoint == 'doctor.dashboard' }}">Upcoming visits</a>
+          <a href="{{ url_for('doctor.settings') }}" class="{{ 'active' if request.endpoint == 'doctor.settings' }}">Practice settings</a>
+        {% elif current_user.role == 'admin' %}
+          <a href="{{ url_for('admin.dashboard') }}" class="{{ 'active' if request.endpoint == 'admin.dashboard' }}">Doctors</a>
+          <a href="{{ url_for('admin.new_doctor') }}" class="{{ 'active' if request.endpoint == 'admin.new_doctor' }}">Add doctor</a>
+        {% endif %}
+      </nav>
+
+      <div class="side-footer">
+        <div class="user-chip">
+          <span class="user-initial">{{ current_user.name[0]|upper }}</span>
+          <span class="user-meta">
+            <span class="user-name">{{ current_user.name }}</span>
+            <span class="user-role">{{ current_user.role }}</span>
+          </span>
+        </div>
+        <a href="{{ url_for('auth.logout') }}" class="logout-link">Log out</a>
+      </div>
+    </aside>
+
+    <main class="main">
+      {{ flashes() }}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+{% else %}
+  <div class="auth-shell split">
+    <div class="auth-visual">
+      <div class="auth-brand">
+        <svg class="brand-mark" viewBox="0 0 120 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M2 14H26L32 4L42 24L50 10L56 18L64 14H118" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="brand-word">Attend</span>
+      </div>
+      <div class="auth-visual-copy">
+        <h2>One system for the whole clinic — booking, symptoms, and follow-up in one place.</h2>
+        <p>Patients share symptoms ahead of time, doctors get an AI-prepared summary before every visit, and admins keep the whole schedule running.</p>
+      </div>
+      <div class="auth-stat-row">
+        <div><span class="num">{{ hospital_doctor_count }}</span><span class="lbl">Doctors</span></div>
+        <div><span class="num">{{ hospital_department_count }}</span><span class="lbl">Departments</span></div>
+        <div><span class="num">{{ hospital_patient_count }}</span><span class="lbl">Patients</span></div>
+      </div>
+    </div>
+    <div class="auth-form-panel">
+      <div class="auth-form-inner">
+        {{ flashes() }}
+        {% block content_auth %}{% endblock %}
+      </div>
+    </div>
+  </div>
+{% endif %}
+</body>
+</html>

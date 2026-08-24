@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Doctor Dashboard{% endblock %}
+{% block content %}
+<div class="card-row">
+  <div>
+    <h1>Dr. {{ current_user.name }}</h1>
+    <p class="subtitle">{{ profile.specialization }} · {{ profile.working_hours_start }}–{{ profile.working_hours_end }} · {{ profile.slot_duration_minutes }} min slots</p>
+  </div>
+  <a class="btn btn-outline" href="{{ url_for('doctor.settings') }}">Practice settings</a>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-card">
+    <span class="stat-number">{{ today_count }}</span>
+    <span class="stat-label">Today</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">{{ upcoming_count }}</span>
+    <span class="stat-label">Upcoming</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">{{ high_urgency_count }}</span>
+    <span class="stat-label">High urgency</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">{{ completed_count }}</span>
+    <span class="stat-label">Completed</span>
+  </div>
+</div>
+
+<div class="section-row"><h2>Upcoming appointments</h2></div>
+{% if not appointments %}
+  <p class="muted">No upcoming appointments.</p>
+{% endif %}
+{% for a in appointments %}
+  <div class="card card-row">
+    <div>
+      <strong>{{ a.patient.name }}</strong> — {{ a.slot_start.strftime('%d %b %Y, %H:%M') }}
+      {% if a.pre_visit_urgency %}
+        <span class="badge badge-{{ a.pre_visit_urgency.lower() }}">{{ a.pre_visit_urgency }}</span>
+      {% endif %}
+    </div>
+    <a class="btn" href="{{ url_for('doctor.view_appointment', appt_id=a.id) }}">Open</a>
+  </div>
+{% endfor %}
+{% endblock %}

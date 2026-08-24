@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+{% block content_auth %}
+<h1>Create an account</h1>
+<form method="POST" id="reg-form">
+  <div>
+    <label>I am a</label>
+    <select name="role" id="role-select" onchange="document.getElementById('doctor-fields').style.display = this.value === 'doctor' ? 'flex' : 'none'">
+      <option value="patient">Patient</option>
+      <option value="doctor">Doctor</option>
+    </select>
+  </div>
+  <div>
+    <label>Full name</label>
+    <input type="text" name="name" required>
+  </div>
+  <div>
+    <label>Email</label>
+    <input type="email" name="email" required>
+  </div>
+  <div>
+    <label>Password</label>
+    <input type="password" name="password" required minlength="6">
+  </div>
+  <div id="doctor-fields" style="display:none; flex-direction: column; gap: 12px;">
+    <label>Specialization</label>
+    <input type="text" name="specialization" placeholder="e.g. Cardiology">
+  </div>
+  <button type="submit">Create account</button>
+</form>
+<p class="muted">Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a>.</p>
+<p class="muted">Note: admin accounts and doctor profiles with working hours/slot duration are set up by the clinic admin — this form covers basic self-registration only.</p>
+{% endblock %}

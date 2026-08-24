@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Find a doctor{% endblock %}
+{% block content %}
+<h1>Find a doctor</h1>
+<form method="GET" style="flex-direction: row; align-items: flex-end; max-width: none;">
+  <div>
+    <label>Specialization</label>
+    <select name="specialization">
+      <option value="">All</option>
+      {% for s in specializations %}
+        <option value="{{ s }}" {% if s == selected %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit">Filter</button>
+</form>
+
+<h2>Doctors</h2>
+{% if not doctors %}
+  <p class="muted">No doctors found.</p>
+{% endif %}
+{% for d in doctors %}
+  <div class="card card-row">
+    <div>
+      <strong>Dr. {{ d.user.name }}</strong> — {{ d.specialization }}<br>
+      <span class="muted">Hours: {{ d.working_hours_start }}–{{ d.working_hours_end }} · {{ d.slot_duration_minutes }} min slots</span>
+    </div>
+    <a class="btn" href="{{ url_for('patient.book', doctor_id=d.id) }}">Book</a>
+  </div>
+{% endfor %}
+{% endblock %}

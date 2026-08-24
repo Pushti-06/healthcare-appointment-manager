@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+<form method="POST">
+  <label>Specialization</label>
+  <input type="text" name="specialization" value="{{ profile.specialization }}" required>
+  <label>Working hours start</label>
+  <input type="time" name="working_hours_start" value="{{ profile.working_hours_start }}" required>
+  <label>Working hours end</label>
+  <input type="time" name="working_hours_end" value="{{ profile.working_hours_end }}" required>
+  <label>Slot duration (minutes)</label>
+  <input type="number" name="slot_duration_minutes" value="{{ profile.slot_duration_minutes }}" required>
+  <button type="submit">Save</button>
+</form>
+{% endblock %}

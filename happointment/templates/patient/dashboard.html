@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Patient Dashboard{% endblock %}
+{% block content %}
+<div class="card-row">
+  <div>
+    <h1>Welcome back, {{ current_user.name.split(' ')[0] }}</h1>
+    <p class="subtitle">Here's where things stand with your care.</p>
+  </div>
+  <a class="btn" href="{{ url_for('patient.search_doctors') }}">+ Book appointment</a>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-card">
+    <span class="stat-number">{{ upcoming_count }}</span>
+    <span class="stat-label">Upcoming</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">{{ completed_count }}</span>
+    <span class="stat-label">Past visits</span>
+  </div>
+</div>
+
+{% if specializations %}
+<div class="section-row"><h2>Quick search by department</h2></div>
+<div class="chip-row">
+  {% for s in specializations %}
+    <a class="chip" href="{{ url_for('patient.search_doctors', specialization=s) }}">{{ s }}</a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="section-row"><h2>Your appointments</h2></div>
+{% if not appointments %}
+  <p class="muted">No appointments yet — search for a doctor above to get started.</p>
+{% endif %}
+
+{% for a in appointments %}
+  <div class="card">
+    <div class="card-row">
+      <div>
+        <strong>Dr. {{ a.doctor.user.name }}</strong> — {{ a.doctor.specialization }}<br>
+        <span class="muted">{{ a.slot_start.strftime('%d %b %Y, %H:%M') }}</span>
+        {% if a.pre_visit_urgency %}
+          <span class="badge badge-{{ a.pre_visit_urgency.lower() }}">{{ a.pre_visit_urgency }}</span>
+        {% endif %}
+        <span class="badge badge-{{ a.status }}">{{ a.status }}</span>
+      </div>
+      <div>
+        <a class="btn btn-outline" href="{{ url_for('patient.view_appointment', appt_id=a.id) }}">View</a>
+        {% if a.status == 'booked' %}
+        <form method="POST" action="{{ url_for('patient.cancel', appt_id=a.id) }}" style="display:inline">
+          <button type="submit" class="btn-danger" onclick="return confirm('Cancel this appointment?')">Cancel</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endfor %}
+{% endblock %}

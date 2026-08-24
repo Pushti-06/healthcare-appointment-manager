@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Manage leave — Dr. {{ doctor.user.name }}{% endblock %}
+{% block content %}
+<h1>Leave — Dr. {{ doctor.user.name }}</h1>
+<p class="subtitle">Marking a leave day automatically cancels any existing bookings on that day and emails the affected patients.</p>
+
+<form method="POST">
+  <label>Date</label>
+  <input type="date" name="date" required>
+  <label>Reason (optional)</label>
+  <input type="text" name="reason" placeholder="e.g. Personal leave">
+  <button type="submit">Mark leave day</button>
+</form>
+
+<h2>Existing leave days</h2>
+{% if not leaves %}
+  <p class="muted">No leave recorded.</p>
+{% endif %}
+<table>
+  <tr><th>Date</th><th>Reason</th></tr>
+  {% for l in leaves %}
+    <tr><td>{{ l.date.strftime('%Y-%m-%d') }}</td><td>{{ l.reason or '—' }}</td></tr>
+  {% endfor %}
+</table>
+
+<a class="btn btn-secondary" href="{{ url_for('admin.dashboard') }}">Back</a>
+{% endblock %}

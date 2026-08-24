@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+<div class="card-row">
+  <div>
+    <h1>Hospital overview</h1>
+    <p class="subtitle">{{ doctor_count }} doctors across {{ departments|length }} departments · {{ patient_count }} registered patients.</p>
+  </div>
+  <a class="btn" href="{{ url_for('admin.new_doctor') }}">+ Add doctor</a>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-card">
+    <span class="stat-number">{{ doctor_count }}</span>
+    <span class="stat-label">Doctors</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">{{ patient_count }}</span>
+    <span class="stat-label">Patients</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">{{ appts_today }}</span>
+    <span class="stat-label">Appointments today</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">{{ upcoming_count }}</span>
+    <span class="stat-label">Upcoming (all)</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">{{ completed_count }}</span>
+    <span class="stat-label">Visits completed</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-row">
+    <div>
+      <strong>Google Calendar</strong>
+      <p class="muted" style="margin: 4px 0 0;">
+        {% if calendar_connected %}
+          Connected — bookings automatically create calendar events for patient and doctor.
+        {% else %}
+          Not connected yet. Booking still works either way; connecting adds calendar invites.
+        {% endif %}
+      </p>
+    </div>
+    {% if not calendar_connected %}
+      <a class="btn btn-outline" href="{{ url_for('admin.google_connect') }}">Connect</a>
+    {% endif %}
+  </div>
+</div>
+
+<h2>Departments</h2>
+<div class="dept-grid">
+  {% for name, count in departments %}
+    <a class="dept-tile" href="#dept-{{ name|replace(' ', '-')|lower }}">
+      <span class="dept-count">{{ count }}</span>
+      <span class="dept-name">{{ name }}</span>
+    </a>
+  {% endfor %}
+</div>
+
+<h2>Doctors</h2>
+{% set ns = namespace(current_dept="") %}
+{% for d in doctors %}
+  {% if d.specialization != ns.current_dept %}
+    {% set ns.current_dept = d.specialization %}
+    <p class="dept-heading" id="dept-{{ d.specialization|replace(' ', '-')|lower }}">{{ d.specialization }}</p>
+  {% endif %}
+  <div class="card card-row">
+    <div>
+      <strong>Dr. {{ d.user.name }}</strong><br>
+      <span class="muted">{{ d.working_hours_start }}–{{ d.working_hours_end }} · {{ d.slot_duration_minutes }} min slots</span>
+    </div>
+    <a class="btn btn-outline" href="{{ url_for('admin.manage_leave', doctor_id=d.id) }}">Manage leave</a>
+  </div>
+{% endfor %}
+{% endblock %}
